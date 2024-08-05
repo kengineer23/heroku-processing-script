@@ -1,2 +1,1 @@
-web: python processing_script.py
 web: gunicorn processing_script:app
