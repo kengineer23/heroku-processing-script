@@ -5,23 +5,25 @@
 This application receives air quality data, updates device modes, and communicates with an ESP32 device.
 """
 
-from flask import Flask, request, jsonify
-from pymongo import MongoClient
+from flask import Flask, request, jsonify,g
+from pymongo import MongoClient 
 from threading import Thread, Lock
 import time
 import requests
 import logging
+import ipaddress
+import struct
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 
-# ESP32 endpoint URL (adjust this to your ESP32's IP address and endpoint)
-ESP32_URL = 'http://192.168.1.8/update'
+# Global variable to store the URL
+esp32_url = None
 
 app = Flask(__name__)
 
 # Global variable(s)
-aqi = None
+aqi = int()
 new_data = False
 
 # MongoDB connection setup
@@ -30,6 +32,38 @@ db = client.sensor_data  # Database
 action_collection = db.action  # Post data to this collection
 sensorData_collection = db.readings # Receive data from collection
 mode_collection = db.mode  # Receive data from collection
+device_id_collection = client.device_id
+
+
+@app.route('/receiveDeviceIP', methods=['POST'])
+def receiveIP():
+    # Check if the request is JSON
+    if not request.is_json:
+        return jsonify({'status': 'error', 'message': 'Invalid JSON'}), 400
+    
+    print("Received data")
+
+    # Parse JSON data
+    received_data = request.get_json()
+
+    # Validate required fields
+    if 'document' not in received_data:
+        return jsonify({'status': 'error', 'message': 'Missing document'}), 400
+    
+    device_ip = int(received_data['document']['IP Address']['$numberInt'])
+
+    # Convert the uint32 value to bytes in little-endian format
+    byte_representation = struct.pack('<I', device_ip)
+    
+    # Unpack the bytes to an IPv4 address in big-endian format
+    ip_address = ipaddress.IPv4Address(struct.unpack('>I', byte_representation)[0])
+    print(ip_address)
+
+    # URL to establish one-to-one connection with ESP32
+    esp32_url = f"http://{ip_address}/update"
+    print(esp32_url)
+
+    return jsonify({'message': 'Device IP received successfully!', 'device_ip': device_ip}), 200
 
 # Constants
 valid_modes = ["AUTO", "TURBO", "SILENT", "SLEEP"]
@@ -58,7 +92,7 @@ def map_value(value, in_min, in_max, out_min, out_max):
     return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
 @app.route('/receiveAQI', methods=['POST'])
-def notify_aqi():
+def receive_aqi():
     """
     @brief Responds to updates in PM2.5 levels from incoming requests.
 
@@ -74,11 +108,9 @@ def notify_aqi():
         app.logger.error("No data received")
         return jsonify({'error': 'No data received'}), 400
 
-    if 'PM2.5' not in latest_sensor_document:
-        app.logger.error("PM2.5 data missing")
-        return jsonify({'error': 'PM2.5 data missing'}), 400
 
-    aqi = latest_sensor_document['PM2.5']
+    aqi = int(latest_sensor_document['document']['PM2.5']['$numberInt'])
+    print(aqi)
     new_data = True
     return jsonify({'status': 'success'}), 200
 
@@ -161,7 +193,7 @@ def monitor_mode():
     """
     @brief Continuously monitor and apply mode settings.
 
-    This function runs in a separate thread to ensure mode settings are applied every minute.
+    This function runs in a separate thread(in the background) to ensure mode settings are applied every minute.
     """
     global mode
     while True:
@@ -177,6 +209,13 @@ def receive():
     @brief Respond to POST requests by receiving the latest mode.
 
     This function updates the global mode based on incoming webhook payloads.
+
+    mode_lock ensures thread-safe access to the global 'mode' variable,
+    preventing race conditions by serializing read and write operations
+    across multiple threads. 
+
+    Using 'with' the process of acquiring and releasing the lock is done automatically.
+    Once the statements within the with block are executed, the lock is released for other threads to acquire.
     
     @return JSON response indicating success or error status.
     """
@@ -208,6 +247,7 @@ def notify_action():
     
     @return JSON response indicating success or error status.
     """
+    global esp32_url
     data = request.json
     app.logger.debug("Received data: %s", data)
     
@@ -215,19 +255,22 @@ def notify_action():
         app.logger.error("No data received")
         return jsonify({'error': 'No data received'}), 400
     
+    if not esp32_url:
+        return jsonify({'error':'URL Not set'}), 400
+    else:
     # Send the data to the ESP32
-    try:
-        response = requests.post(ESP32_URL, json=data)
-        app.logger.debug("Response from ESP32: %s", response.text)
+        try:
+            response = requests.post(esp32_url, json=data)
+            app.logger.debug("Response from ESP32: %s", response.text)
         
-        if response.status_code == 200:
-            return jsonify({'status': 'success'}), 200
-        else:
-            app.logger.error("Failed to notify ESP32, status code: %s", response.status_code)
-            return jsonify({'error': 'Failed to notify ESP32'}), 500
-    except Exception as e:
-        app.logger.exception("Exception occurred while notifying ESP32")
-        return jsonify({'error': str(e)}), 500
+            if response.status_code == 200:
+                return jsonify({'status': 'success'}), 200
+            else:
+                app.logger.error("Failed to notify ESP32, status code: %s", response.status_code)
+                return jsonify({'error': 'Failed to notify ESP32'}), 500
+        except Exception as e:
+            app.logger.exception("Exception occurred while notifying ESP32")
+            return jsonify({'error': str(e)}), 500
 
 if __name__ == "__main__":
     # Start the monitoring thread
