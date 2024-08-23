@@ -50,13 +50,13 @@ def receiveIP():
     # Validate required fields
     if 'document' not in received_data:
         return jsonify({'status': 'error', 'message': 'Missing document'}), 400
-    
+    '''
     device_ip = received_data['document']['IP Address']
     # URL to establish one-to-one connection with ESP32
     with mode_lock:
         esp32_url = f"http://{device_ip}/update"
     print(esp32_url)
-
+    '''
     return jsonify({'message': 'Device IP received successfully!', 'device_ip': device_ip}), 200
 
 # Constants
@@ -252,7 +252,7 @@ def notify_action():
     
     @return JSON response indicating success or error status.
     """
-    global esp32_url
+    esp32_url = 'https://62d8-103-159-45-181.ngrok-free.app/update'
     print(esp32_url)
     data = request.json
     app.logger.debug("Received data: %s", data)
