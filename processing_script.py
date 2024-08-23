@@ -243,6 +243,7 @@ def receive():
     else:
         return jsonify({'message': 'Invalid data format!'}), 400
 
+global action_data
 @app.route('/notify_action', methods=['POST'])
 def notify_action():
     """
@@ -252,9 +253,10 @@ def notify_action():
     
     @return JSON response indicating success or error status.
     """
-    data = request.json
-    print(data)
-    app.logger.debug("Received data: %s", data)
+    global action_data
+    action_data = request.json
+    print(action_data)
+    app.logger.debug("Received data: %s", action_data)
     
     if not data:
         print('1')
@@ -276,6 +278,12 @@ def notify_action():
         return jsonify({'error': str(e)}), 500
     '''
     return jsonify({'status': 'success', 'data': data}), 200
+
+@app.route('/data', methods=['GET'])
+def get_data():
+    # Example data to send
+    global action_data
+    return jsonify(action_data)
 
 if __name__ == "__main__":
     # Start the monitoring thread
