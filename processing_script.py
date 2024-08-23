@@ -255,13 +255,14 @@ def notify_action():
     esp32_url = ' https://dd62-103-159-45-181.ngrok-free.app/update'
     print(esp32_url)
     data = request.json
+    print(data)
     app.logger.debug("Received data: %s", data)
     
     if not data:
         print('1')
         app.logger.error("No data received")
         return jsonify({'error': 'No data received'}), 400
-
+'''
     app.logger.debug('Sending data to ESP32')
     try:
         response = requests.post(esp32_url, json=data, timeout=10)
@@ -275,7 +276,7 @@ def notify_action():
     except requests.exceptions.RequestException as e:
         app.logger.exception("Exception occurred while notifying ESP32: %s", str(e))
         return jsonify({'error': str(e)}), 500
-
+'''
 
 if __name__ == "__main__":
     # Start the monitoring thread
