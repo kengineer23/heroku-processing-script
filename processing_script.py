@@ -258,7 +258,7 @@ def notify_action():
     print(action_data)
     app.logger.debug("Received data: %s", action_data)
     
-    if not data:
+    if not action_data:
         print('1')
         app.logger.error("No data received")
         return jsonify({'error': 'No data received'}), 400
@@ -277,7 +277,7 @@ def notify_action():
         app.logger.exception("Exception occurred while notifying ESP32: %s", str(e))
         return jsonify({'error': str(e)}), 500
     '''
-    return jsonify({'status': 'success', 'data': data}), 200
+    return jsonify({'status': 'success', 'data': action_data}), 200
 
 @app.route('/data', methods=['GET'])
 def get_data():
