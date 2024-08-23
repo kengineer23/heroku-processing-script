@@ -260,7 +260,7 @@ def notify_action():
         print('1')
         app.logger.error("No data received")
         return jsonify({'error': 'No data received'}), 400
-'''
+    '''
     app.logger.debug('Sending data to ESP32')
     try:
         response = requests.post(esp32_url, json=data, timeout=10)
@@ -274,7 +274,8 @@ def notify_action():
     except requests.exceptions.RequestException as e:
         app.logger.exception("Exception occurred while notifying ESP32: %s", str(e))
         return jsonify({'error': str(e)}), 500
-'''
+    '''
+    return jsonify({'status': 'success', 'data': data}), 200
 
 if __name__ == "__main__":
     # Start the monitoring thread
