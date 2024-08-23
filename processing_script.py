@@ -45,9 +45,6 @@ def notify_action():
     """
     data = request.json
 
-    if not data or 'payload' not in data:
-        return jsonify({"error": "Invalid data format"}), 400
-
     payload = data['payload']
 
     with data_lock:
