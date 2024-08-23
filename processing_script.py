@@ -252,8 +252,6 @@ def notify_action():
     
     @return JSON response indicating success or error status.
     """
-    esp32_url = ' https://dd62-103-159-45-181.ngrok-free.app/update'
-    print(esp32_url)
     data = request.json
     print(data)
     app.logger.debug("Received data: %s", data)
