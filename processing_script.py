@@ -34,7 +34,42 @@ sensorData_collection = db.readings # Receive data from collection
 mode_collection = db.mode  # Receive data from collection
 device_id_collection = client.device_id
 
+# Shared data storage and lock
+data_store = None
+data_lock = Lock()
 
+@app.route('/notify_action', methods=['POST'])
+def notify_action():
+    """
+    This route receives data from MongoDB trigger and stores it for the ESP32.
+    """
+    data = request.json
+
+    if not data or 'payload' not in data:
+        return jsonify({"error": "Invalid data format"}), 400
+
+    payload = data['payload']
+
+    with data_lock:
+        global data_store
+        data_store = payload
+
+    return jsonify({"status": "success"}), 200
+
+@app.route('/get_data', methods=['GET'])
+def get_data():
+    """
+    This route allows the ESP32 to retrieve its data.
+    """
+    with data_lock:
+        global data_store
+        if data_store is not None:
+            payload = data_store
+            data_store = None  # Clear the data after it is retrieved
+            return jsonify({"payload": payload}), 200
+        else:
+            return jsonify({"error": "No data available"}), 404
+        
 @app.route('/receiveDeviceIP', methods=['POST'])
 def receiveIP():
     global esp32_url
@@ -50,13 +85,13 @@ def receiveIP():
     # Validate required fields
     if 'document' not in received_data:
         return jsonify({'status': 'error', 'message': 'Missing document'}), 400
-    '''
+
     device_ip = received_data['document']['IP Address']
     # URL to establish one-to-one connection with ESP32
     with mode_lock:
         esp32_url = f"http://{device_ip}/update"
     print(esp32_url)
-    '''
+
     return jsonify({'message': 'Device IP received successfully!', 'device_ip': device_ip}), 200
 
 # Constants
@@ -242,8 +277,7 @@ def receive():
             
     else:
         return jsonify({'message': 'Invalid data format!'}), 400
-
-global action_data
+'''
 @app.route('/notify_action', methods=['POST'])
 def notify_action():
     """
@@ -253,16 +287,15 @@ def notify_action():
     
     @return JSON response indicating success or error status.
     """
-    global action_data
-    action_data = request.json
-    print(action_data)
-    app.logger.debug("Received data: %s", action_data)
+    data = request.json
+    print(data)
+    app.logger.debug("Received data: %s", data)
     
-    if not action_data:
+    if not data:
         print('1')
         app.logger.error("No data received")
         return jsonify({'error': 'No data received'}), 400
-    '''
+
     app.logger.debug('Sending data to ESP32')
     try:
         response = requests.post(esp32_url, json=data, timeout=10)
@@ -276,14 +309,9 @@ def notify_action():
     except requests.exceptions.RequestException as e:
         app.logger.exception("Exception occurred while notifying ESP32: %s", str(e))
         return jsonify({'error': str(e)}), 500
-    '''
-    return jsonify({'status': 'success', 'data': action_data}), 200
 
-@app.route('/data', methods=['GET'])
-def get_data():
-    # Example data to send
-    global action_data
-    return jsonify(action_data)
+'''
+
 
 if __name__ == "__main__":
     # Start the monitoring thread
