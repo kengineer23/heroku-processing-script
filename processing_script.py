@@ -18,7 +18,7 @@ import struct
 logging.basicConfig(level=logging.DEBUG)
 
 # Global variable to store the URL
-esp32_url = None
+esp32_url = ''
 
 app = Flask(__name__)
 
@@ -37,6 +37,7 @@ device_id_collection = client.device_id
 
 @app.route('/receiveDeviceIP', methods=['POST'])
 def receiveIP():
+    global esp32_url
     # Check if the request is JSON
     if not request.is_json:
         return jsonify({'status': 'error', 'message': 'Invalid JSON'}), 400
@@ -50,17 +51,10 @@ def receiveIP():
     if 'document' not in received_data:
         return jsonify({'status': 'error', 'message': 'Missing document'}), 400
     
-    device_ip = int(received_data['document']['IP Address']['$numberInt'])
-
-    # Convert the uint32 value to bytes in little-endian format
-    byte_representation = struct.pack('<I', device_ip)
-    
-    # Unpack the bytes to an IPv4 address in big-endian format
-    ip_address = ipaddress.IPv4Address(struct.unpack('>I', byte_representation)[0])
-    print(ip_address)
-
+    device_ip = received_data['document']['IP Address']
     # URL to establish one-to-one connection with ESP32
-    esp32_url = f"http://{ip_address}/update"
+    with mode_lock:
+        esp32_url = f"http://{device_ip}/update"
     print(esp32_url)
 
     return jsonify({'message': 'Device IP received successfully!', 'device_ip': device_ip}), 200
@@ -111,7 +105,8 @@ def receive_aqi():
 
     aqi = int(latest_sensor_document['document']['PM2.5']['$numberInt'])
     print(aqi)
-    new_data = True
+    #new_data = True
+    sendDatatoMongoDB()
     return jsonify({'status': 'success'}), 200
 
 def ledcolor(pm2_5):
@@ -136,7 +131,7 @@ def ledcolor(pm2_5):
         blue = int(0)
     return red, green, blue
 
-def sendDatatoMongoDB(dutycycle, status, red, green, blue):
+def sendDatatoMongoDB():
     """
     @brief Update the 'action' collection in MongoDB with new data.
 
@@ -146,6 +141,25 @@ def sendDatatoMongoDB(dutycycle, status, red, green, blue):
     @param green Green component of the LED color.
     @param blue Blue component of the LED color.
     """
+    global aqi, mode
+    red, green, blue = ledcolor(aqi)
+
+    if mode == "AUTO":
+        dutycycle = map_value(aqi, 0, AQI_MAX, 0, DUTY_CYCLE_MAX)
+        status = "Normal"
+    elif mode == "TURBO":
+        dutycycle = DUTY_CYCLE_MAX
+        status = "Fast"
+    elif mode == "SILENT":
+        dutycycle = DUTY_CYCLE_MIN_WORKING
+        status = "Slow"
+    elif mode == "SLEEP":
+        dutycycle = DUTY_CYCLE_MIN_IDLE
+        status = "Stationary"
+    else:
+        return  # Handle invalid mode gracefully
+
+    # Create a document to be inserted into the collection
     document = {
         "DutyCycle": dutycycle,
         "ISAAC_STATUS": status,
@@ -160,6 +174,7 @@ def sendDatatoMongoDB(dutycycle, status, red, green, blue):
     # Print the inserted document's ObjectID
     print(f"Data inserted successfully: {result.inserted_id}")
 
+'''
 def mode_settings(function_mode):
     """
     @brief Adjust system settings based on the selected mode.
@@ -168,6 +183,7 @@ def mode_settings(function_mode):
     
     @param function_mode The mode to apply settings for.
     """
+    print('Function mode_settings being executed')
     global aqi, new_data
     red, green, blue = ledcolor(aqi)
 
@@ -188,20 +204,9 @@ def mode_settings(function_mode):
     if new_data:
         sendDatatoMongoDB(dutycycle, status, red, green, blue)
         new_data = False
-
-def monitor_mode():
-    """
-    @brief Continuously monitor and apply mode settings.
-
-    This function runs in a separate thread(in the background) to ensure mode settings are applied every minute.
-    """
-    global mode
-    while True:
-        with mode_lock:
-            current_mode = mode
-    
-        mode_settings(current_mode)
-        time.sleep(60)
+    else:
+        print('No new data')
+'''
 
 @app.route('/receiveMode', methods=['POST'])
 def receive():
@@ -248,34 +253,35 @@ def notify_action():
     @return JSON response indicating success or error status.
     """
     global esp32_url
+    print(esp32_url)
     data = request.json
     app.logger.debug("Received data: %s", data)
     
     if not data:
+        print('1')
         app.logger.error("No data received")
         return jsonify({'error': 'No data received'}), 400
+
+    app.logger.debug('Sending data to ESP32')
+    try:
+        response = requests.post(esp32_url, json=data, timeout=10)
+        app.logger.debug("Response from ESP32: %s", response.text)
     
-    if not esp32_url:
-        return jsonify({'error':'URL Not set'}), 400
-    else:
-    # Send the data to the ESP32
-        try:
-            response = requests.post(esp32_url, json=data)
-            app.logger.debug("Response from ESP32: %s", response.text)
-        
-            if response.status_code == 200:
-                return jsonify({'status': 'success'}), 200
-            else:
-                app.logger.error("Failed to notify ESP32, status code: %s", response.status_code)
-                return jsonify({'error': 'Failed to notify ESP32'}), 500
-        except Exception as e:
-            app.logger.exception("Exception occurred while notifying ESP32")
-            return jsonify({'error': str(e)}), 500
+        if response.status_code == 200:
+            return jsonify({'status': 'success'}), 200
+        else:
+            app.logger.error("Failed to notify ESP32, status code: %s", response.status_code)
+            return jsonify({'error': 'Failed to notify ESP32', 'status_code': response.status_code, 'response_text': response.text}), 500
+    except requests.exceptions.RequestException as e:
+        app.logger.exception("Exception occurred while notifying ESP32: %s", str(e))
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == "__main__":
     # Start the monitoring thread
+    '''
     monitor_thread = Thread(target=monitor_mode)
     monitor_thread.daemon = True  # Allow the thread to exit when the main program exits
     monitor_thread.start()
-    
+    '''
     app.run(host='0.0.0.0', port=5000, debug=True)
