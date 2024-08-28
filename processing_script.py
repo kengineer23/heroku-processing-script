@@ -57,11 +57,13 @@ def receiveIP():
     # Parse JSON data
     received_data = request.get_json()
 
+    print(received_data)
+
     # Validate required fields
-    if 'document' not in received_data:
+    if 'fullDocument' not in received_data:
         return jsonify({'status': 'error', 'message': 'Missing document'}), 400
 
-    device_id = received_data['document']['ISAAC ID']
+    device_id = received_data['fullDocument']['ISAAC ID']
     
 
     return jsonify({'message': 'Device ID received successfully!', 'device_id': device_id}), 200
@@ -110,7 +112,7 @@ def receive_aqi():
         return jsonify({'error': 'No data received'}), 400
 
 
-    aqi = int(latest_sensor_document['document']['PM2.5']['$numberInt'])
+    aqi = int(latest_sensor_document['fullDocument']['PM2.5'])
     print(aqi)
     #new_data = True
     sendDatatoMongoDB()
@@ -145,7 +147,7 @@ def senddatatoMQTTServer(data):
     @param data Data to be sent to the MQTT server.
     """
     global device_id
-    
+
     topic = f"devices/{device_id}/action_params"
     mqtt_client.publish(topic, str(data))
 
