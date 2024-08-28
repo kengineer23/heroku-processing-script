@@ -138,6 +138,17 @@ def ledcolor(pm2_5):
         blue = int(0)
     return red, green, blue
 
+def senddatatoMQTTServer(data):
+    """
+    @brief Send data to the MQTT server.
+
+    @param data Data to be sent to the MQTT server.
+    """
+    global device_id
+    
+    topic = f"devices/{device_id}/action_params"
+    mqtt_client.publish(topic, str(data))
+
 def sendDatatoMongoDB():
     """
     @brief Update the 'action' collection in MongoDB with new data.
@@ -177,6 +188,7 @@ def sendDatatoMongoDB():
     
     # Insert the document into the collection
     result = action_collection.insert_one(document)
+    senddatatoMQTTServer(document)
 
     # Print the inserted document's ObjectID
     print(f"Data inserted successfully: {result.inserted_id}")
@@ -250,7 +262,7 @@ def receive():
     else:
         return jsonify({'message': 'Invalid data format!'}), 400
 
-
+'''
 @app.route('/notify_action', methods=['POST'])
 def notify_action():
     """
@@ -272,7 +284,7 @@ def notify_action():
     print(data)
     app.logger.debug("Received data: %s", data)
     mqtt_client.publish(topic, str(data))
-    
+''' 
     
 
 if __name__ == "__main__":
