@@ -26,11 +26,11 @@ aqi = int()
 new_data = False
 
 # MongoDB connection setup
-client = MongoClient("mongodb+srv://isaac11:kanishk23@cluster0.bdljirk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
-db = client.sensor_data  # Database
-action_collection = db.action  # Post data to this collection
-sensorData_collection = db.readings # Receive data from collection
-mode_collection = db.mode  # Receive data from collection
+client = MongoClient("mongodb+srv://kanishk:kanishk@isaactest.ldse4t5.mongodb.net/?retryWrites=true&w=majority&appName=IsaacTest")
+db = client.isaac_v1  # Database
+action_collection = db.action_params  # Post data to this collection
+sensorData_collection = db.sensor_readings # Receive data from collection
+#mode_collection = db.mode  # Receive data from collection
 device_id_collection = client.device_id
 
 # Shared data storage and lock
@@ -147,6 +147,8 @@ def senddatatoMQTTServer(data):
     @param data Data to be sent to the MQTT server.
     """
     global device_id
+
+    app.logger.debug("Sending data to MQTT server: %s", data)
 
     topic = f"devices/{device_id}/action_params"
     mqtt_client.publish(topic, str(data))
