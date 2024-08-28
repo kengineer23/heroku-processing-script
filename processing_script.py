@@ -26,7 +26,7 @@ aqi = int()
 new_data = False
 
 # MongoDB connection setup
-client = MongoClient("mongodb+srv://kanishk:kanishk@isaactest.ldse4t5.mongodb.net/?retryWrites=true&w=majority&appName=IsaacTest")
+client = MongoClient("mongodb+srv://kanishk:kanishk23@isaactest.ldse4t5.mongodb.net/?retryWrites=true&w=majority&appName=IsaacTest")
 db = client.isaac_v1  # Database
 action_collection = db.action_params  # Post data to this collection
 sensorData_collection = db.sensor_readings # Receive data from collection
@@ -190,7 +190,7 @@ def sendDatatoMongoDB():
         "GREEN": green,
         "BLUE": blue
     }
-    
+    print(document)
     # Insert the document into the collection
     result = action_collection.insert_one(document)
     senddatatoMQTTServer(document)
