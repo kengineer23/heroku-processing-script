@@ -64,6 +64,7 @@ def receiveIP():
         return jsonify({'status': 'error', 'message': 'Missing document'}), 400
 
     device_id = received_data['fullDocument']['ISAAC ID']
+    print(device_id)
     
 
     return jsonify({'message': 'Device ID received successfully!', 'device_id': device_id}), 200
