@@ -251,14 +251,11 @@ def receive()   -> jsonify:
     if request.is_json:
         try:
             content = request.get_json()
-            print(content)
         except Exception as e:
             print(f"Error parsing JSON: {e}")
             return jsonify({'message': 'Invalid JSON format!'}), 400
 
         print("Received data: %s", content)
-
-        print("1")
 
         if 'fullDocument' not in content:
             print("Missing 'fullDocument' in received data")
