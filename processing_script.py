@@ -187,10 +187,6 @@ def sendDatatoMongoDB() -> None:
 
     with mode_lock:
         current_mode = mode
-
-    if not action_collection:
-        print("Collection not found")
-        return
     
     red, green, blue = ledcolor(aqi)
 
