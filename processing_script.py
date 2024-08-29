@@ -267,7 +267,8 @@ def receive()   -> jsonify:
         if received_mode in valid_modes:
             with mode_lock:
                 mode = received_mode
-                sendDatatoMongoDB()
+                
+            sendDatatoMongoDB()
             return jsonify({'message': 'Valid mode received. Changing to {}'.format(received_mode)})
         else:
             return jsonify({'message': 'Invalid mode received'})
