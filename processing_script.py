@@ -17,7 +17,7 @@ app = Flask(__name__)
 
 
 # Setup logging to stdout
-stream_handler = StreamHandler()
+stream_handler = StreamHandler(sys.stdout)
 stream_handler.setLevel(logging.INFO)
 app.logger.addHandler(stream_handler)
 
@@ -289,9 +289,5 @@ def receive()   -> jsonify:
 
 if __name__ == "__main__":
     # Start the monitoring thread
-    '''
-    monitor_thread = Thread(target=monitor_mode)
-    monitor_thread.daemon = True  # Allow the thread to exit when the main program exits
-    monitor_thread.start()
-    '''
+    app.logger.setLevel(logging.INFO)
     app.run(host='0.0.0.0', port=5000, debug=True)
