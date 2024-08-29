@@ -7,20 +7,12 @@ This application receives air quality data, updates device modes, and communicat
 
 from flask import Flask, request, jsonify,g
 from pymongo import MongoClient 
-from threading import Thread, Lock
-import logging
-from logging import StreamHandler
+from threading import Lock
 import paho.mqtt.client as mqtt
-import sys
 
 # Flask application setup
 app = Flask(__name__)
 
-
-# Setup logging to stdout
-stream_handler = StreamHandler(sys.stdout)
-stream_handler.setLevel(logging.INFO)
-app.logger.addHandler(stream_handler)
 
 
 # Global variable(s)
@@ -64,32 +56,32 @@ def receiveID():
     global device_id
     # Check if the request is JSON
     if not request.is_json:
-        app.logger.error("Invalid JSON received")
+        print("Invalid JSON received")
         return jsonify({'status': 'error', 'message': 'Invalid JSON'}), 400
     
-    app.logger.info("Received data")
+    print("Received data")
 
     # Parse JSON data
     try:
         received_data = request.get_json()
-        app.logger.debug(f"Received JSON data: {received_data}")
+        print(f"Received JSON data: {received_data}")
     except Exception as e:
-        app.logger.error(f"Error parsing JSON: {e}")
+        print(f"Error parsing JSON: {e}")
         return jsonify({'status': 'error', 'message': 'Invalid JSON format'}), 400
 
     # Validate required fields
     if 'fullDocument' not in received_data:
-        app.logger.error("Missing 'fullDocument' in received data")
+        print("Missing 'fullDocument' in received data")
         return jsonify({'status': 'error', 'message': 'Missing document'}), 400
 
 
     device_id = received_data['fullDocument'].get('ISAAC ID')   # Get the 'ISAAC ID' from the 'fullDocument' field
     if not device_id:
-        app.logger.error("Missing 'ISAAC ID' in 'fullDocument'")
+        print("Missing 'ISAAC ID' in 'fullDocument'")
         return jsonify({'status': 'error', 'message': 'Missing ISAAC ID'}), 400
 
-    app.logger.info(f"Device ID: {device_id}")
-    app.logger.debug(f"Full received data: {received_data}")
+    print(f"Device ID: {device_id}")
+    print(f"Full received data: {received_data}")
 
     return jsonify({'message': 'Device ID received successfully!', 'device_id': device_id}), 200
 
@@ -120,20 +112,20 @@ def receive_aqi():
 
     try:
         latest_sensor_document = request.get_json()
-        app.logger.debug("Received data: %s", latest_sensor_document)
+        print("Received data: %s", latest_sensor_document)
     except Exception as e:
-        app.logger.error(f"Error parsing JSON: {e}")
+        print(f"Error parsing JSON: {e}")
         return jsonify({'error': 'Invalid JSON format'}), 400
 
     if 'fullDocument' not in latest_sensor_document:
-        app.logger.error("Missing 'fullDocument' in received data")
+        print("Missing 'fullDocument' in received data")
         return jsonify({'error': 'Missing document'}), 400
 
     try:
         aqi = int(latest_sensor_document['fullDocument']['PM2.5'])
-        app.logger.info(f"Received AQI: {aqi}")
+        print(f"Received AQI: {aqi}")
     except Exception as e:
-        app.logger.error(f"Error parsing AQI: {e}")
+        print(f"Error parsing AQI: {e}")
         return jsonify({'error': 'Invalid AQI value'}), 400
     
     # Send data to MongoDB
@@ -165,20 +157,20 @@ def senddatatoMQTTServer(data):
     global device_id
 
     if not device_id:
-        app.logger.error("Device ID not set")
+        print("Device ID not set")
         return
     
     if not mqtt_client:
-        app.logger.error("MQTT client not connected")
+        print("MQTT client not connected")
         return
     
-    app.logger.debug("Sending data to MQTT server: %s", data)
+    print("Sending data to MQTT server: %s", data)
     topic = f"devices/{device_id}/action_params"
     try:
         mqtt_client.publish(topic, str(data))
-        app.logger.info("Data sent to MQTT Server successfully")
+        print("Data sent to MQTT Server successfully")
     except Exception as e:
-        app.logger.error(f"Error sending data to MQTT server: {e}")
+        print(f"Error sending data to MQTT server: {e}")
         return
 
 def sendDatatoMongoDB() -> None:
@@ -197,7 +189,7 @@ def sendDatatoMongoDB() -> None:
         current_mode = mode
 
     if not action_collection:
-        app.logger.error("Collection not found")
+        print("Collection not found")
         return
     
     red, green, blue = ledcolor(aqi)
@@ -215,7 +207,7 @@ def sendDatatoMongoDB() -> None:
         dutycycle = DUTY_CYCLE_MIN_IDLE
         status = "Stationary"
     else:
-        app.logger.error("Invalid mode")
+        print("Invalid mode")
         return  # Handle invalid mode gracefully
 
     # Create a document to be inserted into the collection
@@ -226,12 +218,12 @@ def sendDatatoMongoDB() -> None:
         "GREEN": green,
         "BLUE": blue
     }
-    app.logger.info("Inserting data into MongoDB: %s", document)
+    print("Inserting data into MongoDB: %s", document)
     try:
         result = action_collection.insert_one(document)
-        app.logger.info(f"Data inserted successfully: {result.inserted_id}")
+        print(f"Data inserted successfully: {result.inserted_id}")
     except Exception as e:
-        app.logger.error(f"Error inserting data into MongoDB: {e}")
+        print(f"Error inserting data into MongoDB: {e}")
         return
 
     senddatatoMQTTServer(document)
@@ -261,19 +253,19 @@ def receive()   -> jsonify:
             content = request.get_json()
             print(content)
         except Exception as e:
-            app.logger.error(f"Error parsing JSON: {e}")
+            print(f"Error parsing JSON: {e}")
             return jsonify({'message': 'Invalid JSON format!'}), 400
 
-        app.logger.info("Received data: %s", content)
+        print("Received data: %s", content)
 
         print("1")
 
         if 'fullDocument' not in content:
-            app.logger.error("Missing 'fullDocument' in received data")
+            print("Missing 'fullDocument' in received data")
             return jsonify({'message': 'Missing document'}), 400
         
         received_mode = content['fullDocument'].get('request_mode')
-        app.logger.info(f"Received mode: {received_mode}")
+        print(f"Received mode: {received_mode}")
     
         if received_mode in valid_modes:
             with mode_lock:
@@ -290,5 +282,4 @@ def receive()   -> jsonify:
 
 if __name__ == "__main__":
     # Start the monitoring thread
-    app.logger.setLevel(logging.INFO)
     app.run(host='0.0.0.0', port=5000, debug=True)
