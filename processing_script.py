@@ -255,16 +255,19 @@ def receive()   -> jsonify:
 
         app.logger.info("Received data: %s", content)
 
+        print("1")
+
         if 'fullDocument' not in content:
             app.logger.error("Missing 'fullDocument' in received data")
             return jsonify({'message': 'Missing document'}), 400
         
         received_mode = content['fullDocument'].get('request_mode')
-        app.logger.debug(f"Received mode: {received_mode}")
+        app.logger.info(f"Received mode: {received_mode}")
     
         if received_mode in valid_modes:
             with mode_lock:
                 mode = received_mode
+                sendDatatoMongoDB()
             return jsonify({'message': 'Valid mode received. Changing to {}'.format(received_mode)})
         else:
             return jsonify({'message': 'Invalid mode received'})
