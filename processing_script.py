@@ -11,6 +11,7 @@ from threading import Thread, Lock
 import logging
 from logging import StreamHandler
 import paho.mqtt.client as mqtt
+import sys
 
 # Flask application setup
 app = Flask(__name__)
