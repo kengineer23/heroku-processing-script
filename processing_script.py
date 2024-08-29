@@ -8,15 +8,22 @@ This application receives air quality data, updates device modes, and communicat
 from flask import Flask, request, jsonify,g
 from pymongo import MongoClient 
 from threading import Thread, Lock
-import requests
+from logging import StreamHandler
 import paho.mqtt.client as mqtt
 
-device_id = ''
 
+# Setup logging to stdout
+stream_handler = StreamHandler()
+stream_handler.setLevel(logging.INFO)
+app.logger.addHandler(stream_handler)
+
+# Flask application setup
 app = Flask(__name__)
 
 # Global variable(s)
 aqi = int()
+device_id = ''
+
 
 # MongoDB connection setup
 client = MongoClient("mongodb+srv://kanishk:kanishk23@isaactest.ldse4t5.mongodb.net/?retryWrites=true&w=majority&appName=IsaacTest")
