@@ -8,8 +8,12 @@ This application receives air quality data, updates device modes, and communicat
 from flask import Flask, request, jsonify,g
 from pymongo import MongoClient 
 from threading import Thread, Lock
+import logging
 from logging import StreamHandler
 import paho.mqtt.client as mqtt
+
+# Flask application setup
+app = Flask(__name__)
 
 
 # Setup logging to stdout
@@ -17,8 +21,6 @@ stream_handler = StreamHandler()
 stream_handler.setLevel(logging.INFO)
 app.logger.addHandler(stream_handler)
 
-# Flask application setup
-app = Flask(__name__)
 
 # Global variable(s)
 aqi = int()
