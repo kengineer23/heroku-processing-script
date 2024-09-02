@@ -50,41 +50,6 @@ THRESHOLD_MEDIUM = 100
 mode = "0"
 mode_lock = Lock()
 
-
-@app.route('/receiveDeviceID', methods=['POST'])
-def receiveID():
-    global device_id
-    # Check if the request is JSON
-    if not request.is_json:
-        print("Invalid JSON received")
-        return jsonify({'status': 'error', 'message': 'Invalid JSON'}), 400
-    
-    print("Received data")
-
-    # Parse JSON data
-    try:
-        received_data = request.get_json()
-        print(f"Received JSON data: {received_data}")
-    except Exception as e:
-        print(f"Error parsing JSON: {e}")
-        return jsonify({'status': 'error', 'message': 'Invalid JSON format'}), 400
-
-    # Validate required fields
-    if 'fullDocument' not in received_data:
-        print("Missing 'fullDocument' in received data")
-        return jsonify({'status': 'error', 'message': 'Missing document'}), 400
-
-
-    device_id = received_data['fullDocument'].get('ISAAC ID')   # Get the 'ISAAC ID' from the 'fullDocument' field
-    if not device_id:
-        print("Missing 'ISAAC ID' in 'fullDocument'")
-        return jsonify({'status': 'error', 'message': 'Missing ISAAC ID'}), 400
-
-    print(f"Device ID: {device_id}")
-    print(f"Full received data: {received_data}")
-
-    return jsonify({'message': 'Device ID received successfully!', 'device_id': device_id}), 200
-
 def map_value(value, in_min, in_max, out_min, out_max):
     """
     @brief Scale input value from the input range to the output range.
@@ -99,38 +64,6 @@ def map_value(value, in_min, in_max, out_min, out_max):
     """
     return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
-@app.route('/receiveAQI', methods=['POST'])
-def receive_aqi():
-    """
-    @brief Responds to updates in PM2.5 levels from incoming requests.
-
-    This function receives air quality data (AQI) from a POST request and updates the global state.
-    
-    @return JSON response indicating success or error status.
-    """
-    global aqi, new_data
-
-    try:
-        latest_sensor_document = request.get_json()
-        print("Received data: %s", latest_sensor_document)
-    except Exception as e:
-        print(f"Error parsing JSON: {e}")
-        return jsonify({'error': 'Invalid JSON format'}), 400
-
-    if 'fullDocument' not in latest_sensor_document:
-        print("Missing 'fullDocument' in received data")
-        return jsonify({'error': 'Missing document'}), 400
-
-    try:
-        aqi = int(latest_sensor_document['fullDocument']['PM2.5'])
-        print(f"Received AQI: {aqi}")
-    except Exception as e:
-        print(f"Error parsing AQI: {e}")
-        return jsonify({'error': 'Invalid AQI value'}), 400
-    
-    # Send data to MongoDB
-    sendDatatoMongoDB()
-    return jsonify({'status': 'success'}), 200
 
 # Expects an integer as input and returns a tuple of (red, green, blue) color values
 def ledcolor(pm2_5: int) -> tuple[int, int, int]:
@@ -224,7 +157,74 @@ def sendDatatoMongoDB() -> None:
 
     senddatatoMQTTServer(document)
 
+@app.route('/receiveDeviceID', methods=['POST'])
+def receiveID():
+    global device_id
+    # Check if the request is JSON
+    if not request.is_json:
+        print("Invalid JSON received")
+        return jsonify({'status': 'error', 'message': 'Invalid JSON'}), 400
+    
+    print("Received data")
 
+    # Parse JSON data
+    try:
+        received_data = request.get_json()
+        print(f"Received JSON data: {received_data}")
+    except Exception as e:
+        print(f"Error parsing JSON: {e}")
+        return jsonify({'status': 'error', 'message': 'Invalid JSON format'}), 400
+
+    # Validate required fields
+    if 'fullDocument' not in received_data:
+        print("Missing 'fullDocument' in received data")
+        return jsonify({'status': 'error', 'message': 'Missing document'}), 400
+
+
+    device_id = received_data['fullDocument'].get('ISAAC ID')   # Get the 'ISAAC ID' from the 'fullDocument' field
+    if not device_id:
+        print("Missing 'ISAAC ID' in 'fullDocument'")
+        return jsonify({'status': 'error', 'message': 'Missing ISAAC ID'}), 400
+
+    print(f"Device ID: {device_id}")
+    print(f"Full received data: {received_data}")
+
+    return jsonify({'message': 'Device ID received successfully!', 'device_id': device_id}), 200
+
+
+
+@app.route('/receiveAQI', methods=['POST'])
+def receive_aqi():
+    """
+    @brief Responds to updates in PM2.5 levels from incoming requests.
+
+    This function receives air quality data (AQI) from a POST request and updates the global state.
+    
+    @return JSON response indicating success or error status.
+    """
+    global aqi, new_data
+
+    try:
+        latest_sensor_document = request.get_json()
+        print("Received data: %s", latest_sensor_document)
+    except Exception as e:
+        print(f"Error parsing JSON: {e}")
+        return jsonify({'error': 'Invalid JSON format'}), 400
+
+    if 'fullDocument' not in latest_sensor_document:
+        print("Missing 'fullDocument' in received data")
+        return jsonify({'error': 'Missing document'}), 400
+
+    try:
+        aqi = int(latest_sensor_document['fullDocument']['PM2.5'])
+        print(f"Received AQI: {aqi}")
+    except Exception as e:
+        print(f"Error parsing AQI: {e}")
+        return jsonify({'error': 'Invalid AQI value'}), 400
+    
+    # Send data to MongoDB
+    sendDatatoMongoDB()
+    return jsonify({'status': 'success'}), 200
 
 
 @app.route('/receiveMode', methods=['POST'])
