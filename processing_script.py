@@ -39,7 +39,7 @@ mqtt_client.loop_start()
 # Constants
 valid_modes = ["0", "1", "2", "3"]      # [AUTO, TURBO, SILENT, SLEEP]
 AQI_MAX = 900
-DUTY_CYCLE_MAX = 1900
+DUTY_CYCLE_MAX = 100
 DUTY_CYCLE_MIN_WORKING = 512
 DUTY_CYCLE_MIN_IDLE = 412
 THRESHOLD_HIGH = 150
@@ -75,11 +75,11 @@ def ledcolor(pm2_5: int) -> tuple[int, int, int]:
     @return Tuple of (red, green, blue) color values.
     """
     if(AQI_MAX > pm2_5 >= THRESHOLD_HIGH):
-        return 255, 0, 0  # Red color for high levels
+        return 0, 255, 255  # Red color for high levels
     elif(150 > pm2_5 >= THRESHOLD_MEDIUM):
-        return 255, 255, 0  # Yellow color for medium levels
+        return 255, 0, 0  # Yellow color for medium levels
     else:
-        return 0,255,0  # Green color for normal levels
+        return 255,0,255  # Green color for normal levels
 
 def senddatatoMQTTServer(data):
     """
@@ -124,7 +124,7 @@ def sendDatatoMongoDB() -> None:
     red, green, blue = ledcolor(aqi)
 
     if current_mode == "0":
-        dutycycle = map_value(aqi, 0, AQI_MAX, 0, DUTY_CYCLE_MAX)
+        dutycycle = map_value(aqi, 0, AQI_MAX, 880, DUTY_CYCLE_MAX)
         status = "Normal"
     elif current_mode == "1":
         dutycycle = DUTY_CYCLE_MAX
